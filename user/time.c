@@ -4,49 +4,43 @@
 int
 main(int argc, char * argv[])
 {
+
   if(argc < 2){
     printf("Usage: time <program to time>\n");
-    exit(1);
+    return 1;
   }
-
-  int w8 = 1;
-
-// dont need argv[0]
 
   char * args[ ((sizeof(argv) - 1) / sizeof(char*) ) ];
-  //collecting cla to pass
-  char path[] = {'/','b','i','n','/'};
-  
-  char * program = malloc(sizeof(argv[1])+5);
+  char * program = argv[1];
 
-  memcpy(program, path, 5); // make /bin/ not null-term
-  
-  memcpy(program,argv[1], sizeof(argv[1])); // append the program name
-                                            //
-  for(int i = 1; i < argc; i++){
+  int i = 1;
+  for(; i < argc; i++){
      args[i-1] = argv[i];                   // collect remaining argv[]
   }
+  args[i] = 0;
 
-  if(fork() == 0){
-    while(w8); // toddler jail
+  uint64 * b4 = 0;
+  int pid = fork();
 
-    exit( exec(program, args) < 0); // program set appropriately with extra cla if necessary
+  if(pid < 0){
+    printf("Fork Error!\n");
+    return 1;
+  } else if(pid == 0){ // child
+    (*b4) = uptime();
+    exec(program, args); 
+    printf("Exec Error!\n");
+    exit(-1);
+    return -1;
 
   } else {
-
-    w8 = 0; // disengage lock
-
-    uint64 b4 = uptime();
-
-    if( wait((int *) 0) < 0 ){
-      printf("Exec was unable to run %s", argv[1]);
-      exit(1);
+    int status = 0;
+    wait(&status);
+    if(status < 0){
+      return 1; 
     }
     
-    uint64 a4 = uptime();
-    a4 -= b4;
-    printf("Real-time in ticks: %d\n", (int)a4);
-
+    uint64 a4 = uptime() - (*b4);
+    printf("Real-Time in tickets %d\n", a4);
     return 0;
   }
 }

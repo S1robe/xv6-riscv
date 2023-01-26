@@ -29,6 +29,7 @@ int getmem(void); // will return number
 int getstate(void); // return string of state
 int getparentpid(void); // returns number for parent
 int getkstack(void); // returns exact address of callers kernel stack
+int time(const char*, char**); // time char* with args char **
 
 // ulib.c
 int stat(const char*, struct stat*);
