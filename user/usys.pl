@@ -42,4 +42,3 @@ entry("getmem");
 entry("getstate");
 entry("getparentpid");
 entry("getkstack");
-entry("time");

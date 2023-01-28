@@ -58,7 +58,7 @@ OBJDUMP = $(TOOLPREFIX)objdump
 
 #Removed CFLAGS :  -Werror (Warnings as error)
 
-CFLAGS = -Wall -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
