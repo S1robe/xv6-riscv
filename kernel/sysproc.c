@@ -114,3 +114,23 @@ sys_getkstack(void)
 {
   return myproc()->kstack; // return 64bit address (Base) of kstack
 }
+
+uint64
+sys_getpri(void)
+{
+  return myproc()->prio;
+}
+
+uint64
+sys_setpri(void)
+{
+  int reqpri;
+  argint(0, &reqpri); // get the requested priority
+  if(reqpri <= PRI_MAX && reqpri >= PRI_MIN && reqpri != 0x0E){
+     acquire(&myproc()->lock);
+     myproc()->prio = reqpri;
+     release(&myproc()->lock);
+     return 0;
+  }
+  return 1;
+}

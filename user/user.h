@@ -1,4 +1,5 @@
-#include "kernel/types.h"
+#include "../kernel/types.h"
+
 struct stat;
 
 // system calls
@@ -30,6 +31,11 @@ int getstate(void); // return string of state
 int getparentpid(void); // returns number for parent
 int getkstack(void); // returns exact address of callers kernel stack
 
+//proj 5
+
+int getpri(void);  // returns hex priority
+void setpri(int);   // set priority within range (A-F)\E
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
@@ -44,5 +50,6 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+int strtoi(const char*, const char**, int);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);

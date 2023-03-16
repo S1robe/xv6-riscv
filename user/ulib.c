@@ -1,7 +1,7 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "kernel/fcntl.h"
-#include "user/user.h"
+#include "../kernel/types.h"
+#include "../kernel/stat.h"
+#include "../kernel/fcntl.h"
+#include "../user/user.h"
 
 //
 // wrapper so that it's OK if main() does not call exit().
@@ -99,11 +99,111 @@ int
 atoi(const char *s)
 {
   int n;
-
   n = 0;
   while('0' <= *s && *s <= '9')
     n = n*10 + *s++ - '0';
+
   return n;
+}
+
+// Added by me
+inline int
+ISDIGIT(char c)
+{
+    return (c <= '9' || c >= '0');
+}
+
+// Added by me
+inline int
+ISUPPER(char c)
+{
+    return (c >= 'A' && c <= 'Z');
+}
+
+// Added by me
+inline int
+ISLOWER(char c)
+{
+    return (c >= 'a' && c <= 'z');
+}
+
+// Added by me
+inline int
+ISLETTER(char c)
+{
+    return ISUPPER(c) || ISLOWER(c);
+}
+
+// Added by me
+inline int
+ISALPHA(char c)
+{
+    return ISDIGIT(c) || ISLETTER(c);
+}
+
+// Added by me
+inline int
+ISSPACE(char c)
+{
+    return c == ' ';
+}
+
+// Added by me
+int
+strtoi(const char *strt, const char** end, int base)
+{
+    register const char *s = strt;
+    register int acc;
+    register int c;
+    register unsigned int cutoff;
+    register int neg = 0, any, cutlim;
+
+    do {
+        c = *s++;
+    } while (ISSPACE(c));
+
+    if (c == '-') {
+        neg = 1;
+        c = *s++;
+    } else if (c == '+')
+        c = *s++;
+    if ((base == 0 || base == 16) &&
+        c == '0' && (*s == 'x' || *s == 'X')) {
+        c = s[1];
+        s += 2;
+        base = 16;
+    }
+    if (base == 0)
+        base = c == '0' ? 8 : 10;
+
+    cutoff = neg ? -(unsigned int)-2147483648 : 2147483647;
+    cutlim = cutoff % (unsigned int)base;
+    cutoff /= (unsigned long)base;
+    for (acc = 0, any = 0;; c = *s++) {
+        if (ISDIGIT(c))
+            c -= '0';
+        else if (ISALPHA(c))
+            c -= ISUPPER(c) ? 'A' - 10 : 'a' - 10;
+        else
+            break;
+        if (c >= base)
+            break;
+        if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
+            any = -1;
+        else {
+            any = 1;
+            acc *= base;
+            acc += c;
+        }
+    }
+    if (any < 0) {
+        acc = neg ? -2147483648 : 2147483647;
+
+    } else if (neg)
+        acc = -acc;
+    if (end != 0)
+        *end = (char *) (any ? s - 1 : strt);
+    return (acc);
 }
 
 void*

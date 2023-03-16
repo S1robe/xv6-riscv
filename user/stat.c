@@ -3,6 +3,7 @@
 int main(int argc, char*argv[]){
  
   printf("Process PID:\t%d\n", getpid());
+  printf("Priority:\t%d\n", getpri());
   printf("Memory Used:\t%d\n", getmem()); 
   printf("Proc State:\t");
   switch(getstate()){

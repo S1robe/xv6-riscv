@@ -43,7 +43,7 @@ main(int argc, char * argv[])
     }
 
     int a4 = uptime() - (b4);
-    printf("Real-Time in tickets %d\n", a4);
+    printf("Real-Time in ticks %d\n", a4);
     return 0;
   }
 }
