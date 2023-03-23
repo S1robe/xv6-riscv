@@ -34,7 +34,7 @@ int getkstack(void); // returns exact address of callers kernel stack
 //proj 5
 
 int getpri(void);  // returns hex priority
-void setpri(int);   // set priority within range (A-F)\E
+int setpri(int);   // set priority within range (A-F)\E
 
 // ulib.c
 int stat(const char*, struct stat*);

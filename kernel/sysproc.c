@@ -132,5 +132,5 @@ sys_setpri(void)
      release(&myproc()->lock);
      return 0;
   }
-  return 1;
+  return -1;
 }
