@@ -73,23 +73,22 @@ int do_rand(unsigned long *ctx)
 
 #define rand(next) do_rand(next)
 
-void sendChildrenToWork(void work(void), int escalate, int thresh)
+void sendChildrenToWork(int escalate, int thresh)
 {
-    void (*func)(void) = work; // dereference the function as a function because why not.
 
-    printf("Creating %d children and sending them to school address: %p\n", n, func);
     for(int i = 0; i < n; i++){
         if((whoami = fork()) < 0 ){
             printf("Fork Error!");
             exit(1);
         }
         if(whoami != -1){
+
             if(escalate == 1 && whoami >= thresh){
-                printf("Attempting to escalate %d from %x to %x\n", whoami, getpri(), getpri()+1);
+                printf("Attempting to escalate %d from 0x%x to 0x%x\n", whoami, getpri(), getpri()+1);
                 setpri(getpri() + 1); // Request to elevate my priority by 1 level.
             }
             else if(escalate == -1 && whoami <= thresh){
-                printf("Attempting to deescalate %d from %x to %x\n", whoami, getpri(), getpri()-1);
+                printf("Attempting to deescalate %d from 0x%x to 0x%x\n", whoami, getpri(), getpri()-1);
                 setpri(getpri() - 1);
             }
             close(paused[1]); // close write, wont be writing
@@ -98,7 +97,7 @@ void sendChildrenToWork(void work(void), int escalate, int thresh)
             while(pause)
                 read(paused[0], &pause, 1); // read from the buffer till no longer paused
 
-            func();
+            alphabet();
             exit(0);
         }
     }
@@ -114,21 +113,27 @@ int main(int argc, char * argv[]){
 
    printf("Welcome to the scheduling tool\nThis will test the current priorities of the system.\n");
    whoami = -1; // parent
+    
+
    // All processes with whoami > escalate will make a priority increment request.
    int thresh = ((rand(&rand_next) % n)/2);
    printf("I am the Parent: %d\n", whoami);
    for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
        printf("(No Escalation) Priority Test: 0x%x\n", prio[p]);
-       sendChildrenToWork(alphabet, 0, thresh);
+       sendChildrenToWork(0, thresh);
    }
-    for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
-        printf("(Applying Escalation) Priority Test: 0x%x\n", prio[p]);
-        sendChildrenToWork(alphabet, 1, thresh);
-    }
-    for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
-        printf("(Applying Deescalation) Priority Test: 0x%x\n", prio[p]);
-        sendChildrenToWork(alphabet, -1, thresh);
-    }
 
-    return 0;
+   for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
+       printf("(Applying Escalation) Priority Test: 0x%x\n", prio[p]);
+       sendChildrenToWork(1, thresh);
+   }
+    
+   for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
+       printf("(Applying Deescalation) Priority Test: 0x%x\n", prio[p]);
+       sendChildrenToWork(-1, thresh);
+   }
+   return 0;
+
+
+
 }
