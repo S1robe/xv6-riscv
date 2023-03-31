@@ -458,20 +458,15 @@ void
 scheduler(void)
 {
 
-  struct proc *p;
+  struct proc *next;
   struct cpu *c = mycpu();
 
   c->proc = 0; // kick the process out
   for(;;){
     intr_on(); // no more deadlocks, we are preemptive
     
-    for(p = proc; p < &proc[NPROC]; p++) {
-      aquire(&p->lock);
-      if(p->state == RUNNABLE){
-         
-      }
-      release(&p->lock);
-    }
+    
+
   }
 
   // struct proc *p;
