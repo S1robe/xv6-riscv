@@ -181,6 +181,7 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+  p->prio = 0;
   p->state = UNUSED;
 }
 
@@ -458,16 +459,47 @@ void
 scheduler(void)
 {
 
-  struct proc *next;
+  int currMin = 1, i = 2; // dont want to get the lock for init
+  struct proc *p;
+
+
+  intr_off(); //No interrupting me and the CPU
+  
   struct cpu *c = mycpu();
-
   c->proc = 0; // kick the process out
+  
   for(;;){
-    intr_on(); // no more deadlocks, we are preemptive
-    
-    
 
+    intr_on(); // no more deadlocks, we are preemptive
+    acquire(&proc[currMin].lock);
+
+    for(i = 2; i < NPROC; i++){
+       p = &proc[i];
+       acquire(&p->lock);
+       if(p->state == RUNNABLE){
+          if(p->prio < proc[currMin].prio){
+            release(&proc[currMin].lock); // release the lock on the other process that isnt the min
+            currMin = i; // update min
+            // we will not release p's lock, because it is our new min, it will be released when we find a new min,
+          } else {
+            release(&p->lock);
+          }
+       } else {
+          release(&p->lock);
+       }
+    }
+    // at this point my current minimum's lock is still held.
+    p = &proc[currMin];
+    p->state = RUNNING;
+    c->proc = p;
+    swtch(&c->context, &p->context);
+    //process runs and now done!
+    
+    intr_off();
+    c->proc = 0;
+    release(&p->lock);
   }
+
 
   // struct proc *p;
   // struct cpu *c = mycpu();
@@ -497,7 +529,7 @@ scheduler(void)
 }
 
 // Switch to scheduler.  Must hold only p->lock
-// and have changed proc->state. Saves and restores
+// and have changed proc->state. Saves and restores:
 // intena because intena is a property of this
 // kernel thread, not this CPU. It should
 // be proc->intena and proc->noff, but that would
