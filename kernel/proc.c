@@ -487,18 +487,20 @@ scheduler(void)
         if(n1->prio < p->prio){
           release(&p->lock);
           p = n1;
+          continue;
         }
+        release(&n1->lock);
       }
       
 
-      printf("Scheduling: %d\n", n->pid);
+      // printf("Scheduling: %d\n", n->pid);
       c->proc = p;
       p->state = RUNNING;
 
       swtch(&c->context, &p->context);
       c->proc = 0;
 
-      printf("Stashing: %d\n", n->pid);
+      // printf("Stashing: %d\n", n->pid);
       release(&p->lock);
     }
 
