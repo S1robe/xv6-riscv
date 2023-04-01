@@ -459,45 +459,45 @@ void
 scheduler(void)
 {
 
-  int currMin = 1, i = 2; // dont want to get the lock for init
-  struct proc *p;
-
-
-  intr_off(); //No interrupting me and the CPU
-  
+  struct proc *p = 0, *n, *n1;
+  intr_off(); //No interrupting me and the CPU  
   struct cpu *c = mycpu();
   c->proc = 0; // kick the process out
   
   for(;;){
-
     intr_on(); // no more deadlocks, we are preemptive
-    acquire(&proc[currMin].lock);
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state != RUNNABLE){
+        release(&n->lock);
+        continue;
+      }
+      
+      p = n;
+      for(n1 = proc; n1 < &proc[NPROC]; n1++){
+        if(p == n1) continue;
 
-    for(i = 2; i < NPROC; i++){
-       p = &proc[i];
-       acquire(&p->lock);
-       if(p->state == RUNNABLE){
-          if(p->prio < proc[currMin].prio){
-            release(&proc[currMin].lock); // release the lock on the other process that isnt the min
-            currMin = i; // update min
-            // we will not release p's lock, because it is our new min, it will be released when we find a new min,
-          } else {
-            release(&p->lock);
-          }
-       } else {
+        acquire(&n1->lock);
+        if(n1->state != RUNNABLE){
+          release(&n1->lock);
+          continue;
+        }
+
+        if(n1->state < p->state){
           release(&p->lock);
-       }
+          p = n1;
+        }
+      }
+      
+
+      c->proc = p;
+      p->state = RUNNING;
+
+      swtch(&c->context, &p->context);
+      c->proc = 0;
+      release(&p->lock);
     }
-    // at this point my current minimum's lock is still held.
-    p = &proc[currMin];
-    p->state = RUNNING;
-    c->proc = p;
-    swtch(&c->context, &p->context);
-    //process runs and now done!
-    
-    intr_off();
-    c->proc = 0;
-    release(&p->lock);
+
   }
 
 
