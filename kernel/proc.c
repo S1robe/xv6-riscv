@@ -467,6 +467,7 @@ scheduler(void)
   for(;;){
     intr_on(); // no more deadlocks, we are preemptive
     for(n = proc; n < &proc[NPROC]; n++){
+      
       acquire(&n->lock);
       if(n->state != RUNNABLE){
         release(&n->lock);
@@ -483,18 +484,21 @@ scheduler(void)
           continue;
         }
 
-        if(n1->state < p->state){
+        if(n1->prio < p->prio){
           release(&p->lock);
           p = n1;
         }
       }
       
 
+      printf("Scheduling: %d\n", n->pid);
       c->proc = p;
       p->state = RUNNING;
 
       swtch(&c->context, &p->context);
       c->proc = 0;
+
+      printf("Stashing: %d\n", n->pid);
       release(&p->lock);
     }
 

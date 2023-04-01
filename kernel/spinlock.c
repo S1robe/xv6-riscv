@@ -22,9 +22,10 @@ void
 acquire(struct spinlock *lk)
 {
   push_off(); // disable interrupts to avoid deadlock.
-  if(holding(lk))
+  if(holding(lk)){
+    printf("Already have: %d\n", lk->cpu->proc->pid);
     panic("acquire");
-
+  }
   // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
   //   a5 = 1
   //   s1 = &lk->locked
@@ -32,6 +33,8 @@ acquire(struct spinlock *lk)
   while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
     ;
 
+
+  // printf("Locked %d\n", lk->cpu->proc->pid);
   // Tell the C compiler and the processor to not move loads or stores
   // past this point, to ensure that the critical section's memory
   // references happen strictly after the lock is acquired.
@@ -49,6 +52,7 @@ release(struct spinlock *lk)
   if(!holding(lk))
     panic("release");
 
+  // printf("UnLocked %d\n", lk->cpu->proc->pid);
   lk->cpu = 0;
 
   // Tell the C compiler and the CPU to not move loads or stores
