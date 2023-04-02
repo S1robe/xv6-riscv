@@ -28,16 +28,6 @@ extern char trampoline[]; // trampoline.S
 struct spinlock wait_lock;
 
 
-//Priority handling
-int prio[] = {
-  0x0C,
-  0x0A,
-  0x0B,
-  0x0D,
-  0x0F
-};
-
-
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
@@ -136,7 +126,8 @@ allocproc(void)
 found:
   p->pid   = allocpid();
   p->state = USED;
-  p->prio  = 0x0C;
+  p->prio  = HIGHEST;
+    
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -325,6 +316,7 @@ fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
+  np->prio = p->prio;
 
   release(&np->lock);
 

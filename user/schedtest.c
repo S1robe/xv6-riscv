@@ -1,4 +1,5 @@
 #include "user.h"
+#define MAX 100000000
 
 const int prio[5] = {
    0x0C,
@@ -8,11 +9,12 @@ const int prio[5] = {
    0x0F
 };
 
+
 int n;
 int whoami;
 int pid;
 //Read 0, write 1
-int trap[2];
+int trapC[2];
 unsigned long rand_next = 1;
 
 //Treated as boolean
@@ -33,11 +35,7 @@ int validate(int argc, char * argv[])
 
 void alphabet()
 {
-    printf("%d Doing busy work...\n", whoami);
-    for(int i = 0; i < 50; i++) {
-        for (char a = 'a'; a <= 'z'; a++);
-        for (char z = 'z'; z >= 'a'; z--);
-    }
+    for(unsigned long i = 0; i < MAX ; i++);
 }
 
 // from FreeBSD.
@@ -68,7 +66,7 @@ int do_rand(unsigned long *ctx)
 
 #define rand(next) do_rand(next)
 
-void sendChildrenToWork(int escalate, int thresh, void work(void))
+void sendChildrenToWork(int random, void work(void))
 {
     for(int i = 0; i < n; i++){
         
@@ -78,34 +76,55 @@ void sendChildrenToWork(int escalate, int thresh, void work(void))
         } else if(pid == 0){
             //Child phase
             whoami = getpid();
+
+
+            // All processes with whoami > thresh will make a priority increment request.
+            // All processes have different pids, in the same order, with the same base means that this is 
+            // repeatable for the same results, therefore a good report maker. If ran at the same time!
+            //
+            // I based this RNG seed off user input because why not?
+            // It is skewed intentionally to demonstrate the pri increase, at a base of 10 it will be a 
+            
+            rand_next = whoami;
             int prepri = getpri();
-            printf("I am %d, priority: 0x%x\n", whoami, prepri);
-            if(escalate == 1 && whoami >= thresh){
-                 setpri(getpri() + 1); // Request to elevate my priority by 1 level.
-            }
-            else if(escalate == -1 && whoami <= thresh){
-                 setpri(getpri() - 1);
+            int thresh = ((rand(&rand_next) % 100)+n);
+
+
+            if(random){ 
+                if(thresh > 50){
+                    thresh = (rand(&rand_next) % 5);   
+                    setpri(prio[thresh]); // Request to elevate my priority by 1 level.
+                }
             }
             
-            if(prepri != getpri())
-                printf("Updated Priority of %d, priority: 0x%x\n", whoami, getpri());
+            if(prepri != getpri()){
+                printf("Updated Priority of %d, priority: 0x%x\n", whoami, (prepri=getpri()));
+            }
+            
+            // close(trapC[1]);
+            //  // make all children wait here
+            // int paused = 1;
+            // while(paused)
+            //     read(trapC[0], &paused, 1);
+            // 
+            // close(trapC[0]);
+            (*work)();             
 
-            close(trap[1]); // close write, wont be writing
-            int pause = 1;
-          
-            while(pause)
-                read(trap[0], &pause, 1); // read from the buffer till no longer paused
-        
-            (*work)();
             exit(0);
 
-        } else {
-            write(trap[1], "\0", 1); // release the baby!
-            wait(0);
         }
     }
     if(pid == -1)
         exit(1);
+
+    // close(trapC[0]);
+    //
+    // write(trapC[1], (char *) 0, 1); // release the children
+    // close(trapC[1]);
+    //
+    int status, corpse;
+    while((corpse = wait(&status)) > 0)
+        printf("Child %d Done with work (priority 0x%x)\n", corpse, status);
 }
 
 
@@ -117,28 +136,15 @@ int main(int argc, char * argv[]){
    whoami = -1; // parent
    pid = getpid();
 
-   pipe(trap);
+    pipe(trapC);
 
-   // All processes with whoami > thresh will make a priority increment request.
-   int thresh = ((rand(&rand_next) % n)/2);
-   for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
-       printf("(No Escalation) Priority Test: 0x%x\n", prio[p]);
-       sendChildrenToWork(0, thresh, alphabet);
+   for(int p = 0; p < (sizeof(prio)/sizeof(prio[0])); p++){
+        setpri(prio[p]);
+        printf("(Basic) Priority Test: 0x%x\n", prio[p]);
+        sendChildrenToWork(0, alphabet);
+
+        printf("(Applying Ranomization) Priority Test: 0x%x\n", prio[p]);
+        sendChildrenToWork(1, alphabet);
    }
-
-   for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
-       printf("(Applying Escalation) Priority Test: 0x%x\n", prio[p]);
-       sendChildrenToWork(1, thresh, alphabet);
-   }
-    
-   for(int p = 0; p < (sizeof(prio)/sizeof(int)); p++){
-       printf("(Applying Deescalation) Priority Test: 0x%x\n", prio[p]);
-       sendChildrenToWork(-1, thresh, alphabet);
-   }
-
-
    return 0;
-
-
-
 }

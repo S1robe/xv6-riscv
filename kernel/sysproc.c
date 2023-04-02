@@ -118,19 +118,55 @@ sys_getkstack(void)
 uint64
 sys_getpri(void)
 {
-  return myproc()->prio;
+  int mypri;
+  acquire(&myproc()->lock);
+  mypri = myproc()->prio;
+  release(&myproc()->lock);
+  switch(mypri){
+    case HIGHEST:
+      return 0xC;
+    case HIGH:
+      return 0xA;
+    case MIDDLE:
+      return 0xB;
+    case LOW:
+      return 0xD;
+    case LOWEST:
+      return 0xF;
+  }
+  return -1;
 }
 
 uint64
 sys_setpri(void)
 {
   int reqpri;
+  struct proc *p;
   argint(0, &reqpri); // get the requested priority
-  if(reqpri <= PRI_MAX && reqpri >= PRI_MIN && reqpri != 0x0E){
-     acquire(&myproc()->lock);
-     myproc()->prio = reqpri;
-     release(&myproc()->lock);
-     return 0;
-  }
-  return -1;
+  p = myproc();
+  acquire(&p->lock);
+  
+  switch(reqpri){
+      case 0xC:
+        p->prio = HIGHEST;
+        break;
+      case 0xA:
+        p->prio = HIGH;
+        break;
+      case 0xB:
+        p->prio = MIDDLE;
+        break;
+      case 0xD:
+        p->prio = LOW;
+        break;
+      case 0xF:
+        p->prio = LOWEST;
+        break;
+      default:
+        release(&p->lock);
+        return -1;
+    }
+
+  release(&p->lock);
+  return 0;
 }

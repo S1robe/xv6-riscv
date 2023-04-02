@@ -1,13 +1,4 @@
 
-#ifndef PRI_MAX
-#define PRI_MAX 0x0F
-#endif
-#ifndef PRI_MIN
-#define PRI_MIN 0x0A
-#endif
-
-
-
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -91,6 +82,14 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+enum prio {
+  HIGHEST = 0,
+  HIGH    = 1,
+  MIDDLE  = 2,
+  LOW     = 3,
+  LOWEST  = 4
+};
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -101,7 +100,7 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
-  int prio;                    // Process Priority
+  enum prio prio;              // Process Priority
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
