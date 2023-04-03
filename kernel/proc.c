@@ -451,52 +451,81 @@ void
 scheduler(void)
 {
 
-  struct proc *p = 0, *n, *n1;
-  intr_off(); //No interrupting me and the CPU  
+  struct proc *p;
+  intr_off();
   struct cpu *c = mycpu();
-  c->proc = 0; // kick the process out
-  
+  c->proc = 0;
   for(;;){
-    intr_on(); // no more deadlocks, we are preemptive
-    for(n = proc; n < &proc[NPROC]; n++){
-      
-      acquire(&n->lock);
-      if(n->state != RUNNABLE){
-        release(&n->lock);
-        continue;
+    intr_on();
+    for(p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p ->state == RUNNABLE){
+       
+
+
       }
-      
-      p = n;
-      for(n1 = proc; n1 < &proc[NPROC]; n1++){
-        if(p == n1) continue;
-
-        acquire(&n1->lock);
-        if(n1->state != RUNNABLE){
-          release(&n1->lock);
-          continue;
-        }
-
-        if(n1->prio < p->prio){
-          release(&p->lock);
-          p = n1;
-          continue;
-        }
-        release(&n1->lock);
-      }
-      
-
-      // printf("Scheduling: %d\n", n->pid);
-      c->proc = p;
-      p->state = RUNNING;
-
-      swtch(&c->context, &p->context);
-      c->proc = 0;
-
-      // printf("Stashing: %d\n", n->pid);
-      release(&p->lock);
     }
 
+
+    c->proc = p;
+    p->state = RUNNING;
+  
+    swtch(&c->context, &p->context);
+    c->proc = 0;
+    release(&p->lock);
+
+
+
+
   }
+
+
+  // struct proc *p = 0, *n, *n1;
+  // intr_off(); //No interrupting me and the CPU  
+  // struct cpu *c = mycpu();
+  // c->proc = 0; // kick the process out
+  // 
+  // for(;;){
+  //   intr_on(); // no more deadlocks, we are preemptive
+  //   for(n = proc; n < &proc[NPROC]; n++){
+  //     
+  //     acquire(&n->lock);
+  //     if(n->state != RUNNABLE){
+  //       release(&n->lock);
+  //       continue;
+  //     }
+  //     
+  //     p = n;
+  //     for(n1 = proc; n1 < &proc[NPROC]; n1++){
+  //       if(p == n1) continue;
+  //
+  //       acquire(&n1->lock);
+  //       if(n1->state != RUNNABLE){
+  //         release(&n1->lock);
+  //         continue;
+  //       }
+  //
+  //       if(n1->prio < p->prio){
+  //         release(&p->lock);
+  //         p = n1;
+  //         continue;
+  //       }
+  //       release(&n1->lock);
+  //     }
+  //     
+  //
+  //     // printf("Scheduling: %d\n", n->pid);
+  //     c->proc = p;
+  //     p->state = RUNNING;
+  //
+  //     swtch(&c->context, &p->context);
+  //     c->proc = 0;
+  //
+  //     // printf("Stashing: %d\n", n->pid);
+  //     release(&p->lock);
+  //   }
+  //
+  // }
 
 
   // struct proc *p;
