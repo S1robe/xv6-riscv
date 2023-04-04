@@ -1,5 +1,5 @@
 #include "user.h"
-#define MAX 10000000000
+#define MAX 5000000000
 
 const int prio[5] = {
    0x0C,
@@ -13,6 +13,7 @@ const int prio[5] = {
 int n;
 int whoami;
 int pid;
+int key = 0;
 //Read 0, write 1
 int trapC[2], trapP[2];
 unsigned long rand_next = 1;
@@ -74,16 +75,18 @@ void sendChildrenToWork(int random, void work(void))
             printf("\nFork Error!\n");
             break;
         } else if(pid == 0){
+            if(i == n-1){
+                key = 1;
+            }
             //Child phase
             whoami = getpid();
-
 
             // All processes with whoami > thresh will make a priority change request.
             // All processes have different pids, in the same order, with the same base means that this is 
             // repeatable for the same results, therefore a good report maker. If ran at the same time!
             //
             // I based this RNG seed off user input because why not?
-            // It is skewed intentionally to demonstrate the pri increase, at a base of 10 it will be a 
+            // It is skewed intentionally to demonstrate the pri increase. 
             
             rand_next = whoami;
             int prepri = getpri();
@@ -91,20 +94,20 @@ void sendChildrenToWork(int random, void work(void))
 
 
             if(random){ 
-                if(thresh > 50){
+                if(thresh > 0){
                     thresh = (rand(&rand_next) % 5);   
                     setpri(prio[thresh]); // Request to change my priority.
-                    
-                        printf("Updated Priority of %d, priority: 0x%x\n", whoami, (prepri=getpri()));
+                    prepri = getpri();
                 }
             }
-           
+         
+            if(key){
+                write(trapP[1], "\1", 1); // only one process will get this, and it will be the last one.
+            }
 
-             // make all children wait here
-            read(trapC[0], 0, 1);
+
+            read(trapC[0],0, 1);
             
-            write(trapC[1], 0, 1);
-
             close(trapC[0]);
             close(trapC[1]);
             (*work)();             
@@ -116,11 +119,17 @@ void sendChildrenToWork(int random, void work(void))
     if(pid == -1)
         exit(1);
 
-    write(trapC[1], (char *) 0, 1); // release the children
+    read(trapP[0], 0, 1); // parent will get stuck here and wait to be released.
+
+    printf("Beginning test....\n");
+
+    write(trapC[1], (char *) 0, n); // release the children
 
     int status, corpse;
     while((corpse = wait(&status)) > 0)
         printf("Child %d Done with work (priority 0x%x)\n", corpse, status);
+
+
 }
 
 
@@ -131,9 +140,12 @@ int main(int argc, char * argv[]){
    printf("Welcome to the scheduling tool\nThis will test the current priorities of the system.\n");
    whoami = -1; // parent
    pid = getpid();
+    
 
     pipe(trapC);
     pipe(trapP);
+
+
 
    for(int p = 0; p < (sizeof(prio)/sizeof(prio[0])); p++){
         setpri(prio[p]);
