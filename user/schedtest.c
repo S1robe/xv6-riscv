@@ -1,5 +1,5 @@
 #include "user.h"
-#define MAX 100000000
+#define MAX 10000000000
 
 const int prio[5] = {
    0x0C,
@@ -14,7 +14,7 @@ int n;
 int whoami;
 int pid;
 //Read 0, write 1
-int trapC[2];
+int trapC[2], trapP[2];
 unsigned long rand_next = 1;
 
 //Treated as boolean
@@ -78,7 +78,7 @@ void sendChildrenToWork(int random, void work(void))
             whoami = getpid();
 
 
-            // All processes with whoami > thresh will make a priority increment request.
+            // All processes with whoami > thresh will make a priority change request.
             // All processes have different pids, in the same order, with the same base means that this is 
             // repeatable for the same results, therefore a good report maker. If ran at the same time!
             //
@@ -93,35 +93,31 @@ void sendChildrenToWork(int random, void work(void))
             if(random){ 
                 if(thresh > 50){
                     thresh = (rand(&rand_next) % 5);   
-                    setpri(prio[thresh]); // Request to elevate my priority by 1 level.
+                    setpri(prio[thresh]); // Request to change my priority.
+                    
+                        printf("Updated Priority of %d, priority: 0x%x\n", whoami, (prepri=getpri()));
                 }
             }
+           
+
+             // make all children wait here
+            read(trapC[0], 0, 1);
             
-            if(prepri != getpri()){
-                printf("Updated Priority of %d, priority: 0x%x\n", whoami, (prepri=getpri()));
-            }
-            
-            // close(trapC[1]);
-            //  // make all children wait here
-            // int paused = 1;
-            // while(paused)
-            //     read(trapC[0], &paused, 1);
-            // 
-            // close(trapC[0]);
+            write(trapC[1], 0, 1);
+
+            close(trapC[0]);
+            close(trapC[1]);
             (*work)();             
 
-            exit(0);
+            exit(prepri);
 
         }
     }
     if(pid == -1)
         exit(1);
 
-    // close(trapC[0]);
-    //
-    // write(trapC[1], (char *) 0, 1); // release the children
-    // close(trapC[1]);
-    //
+    write(trapC[1], (char *) 0, 1); // release the children
+
     int status, corpse;
     while((corpse = wait(&status)) > 0)
         printf("Child %d Done with work (priority 0x%x)\n", corpse, status);
@@ -137,6 +133,7 @@ int main(int argc, char * argv[]){
    pid = getpid();
 
     pipe(trapC);
+    pipe(trapP);
 
    for(int p = 0; p < (sizeof(prio)/sizeof(prio[0])); p++){
         setpri(prio[p]);

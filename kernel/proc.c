@@ -451,31 +451,77 @@ void
 scheduler(void)
 {
 
-  struct proc *p;
+  struct proc *n;
   intr_off();
   struct cpu *c = mycpu();
   c->proc = 0;
   for(;;){
-    intr_on();
-    for(p = proc; p < &proc[NPROC]; p++){
-      acquire(&p->lock);
-      if(p ->state == RUNNABLE){
-       
-
-
+    intr_on(); 
+    //Find all the C's
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        if(n-> prio == HIGHEST){
+          goto run;
+        }
       }
+      release(&n->lock);
+    }
+    //Then find all the A
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        if(n-> prio == HIGH){
+          goto run;
+        }
+      }
+      release(&n->lock);
+    }
+
+    //Then the B
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        if(n-> prio == MIDDLE){
+          goto run;
+        }
+      }
+      release(&n->lock);
     }
 
 
-    c->proc = p;
-    p->state = RUNNING;
-  
-    swtch(&c->context, &p->context);
-    c->proc = 0;
-    release(&p->lock);
+    //then D
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        if(n-> prio == LOW){
+          goto run;
+        }
+      }
+      release(&n->lock);
+    }   
+    //then F
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        if(n-> prio == LOWEST){
+          goto run;
+        }
+      }
+      release(&n->lock);
+    }
+    continue;
+    run:
+      c->proc = n;
+      n->state = RUNNING;
 
+      swtch(&c->context, &n->context);
+      c->proc = 0;
 
+      // printf("Stashing: %d\n", n->pid);
+      release(&n->lock);
 
+      
 
   }
 
