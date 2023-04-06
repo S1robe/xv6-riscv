@@ -468,6 +468,9 @@ scheduler(void)
       release(&n->lock);
     }
     //Then find all the A
+    //
+    // continue to end of list with the one processes selected,
+    // if you find a higher one reset.
     for(n = proc; n < &proc[NPROC]; n++){
       acquire(&n->lock);
       if(n->state == RUNNABLE){
@@ -518,9 +521,7 @@ scheduler(void)
       swtch(&c->context, &n->context);
       c->proc = 0;
 
-      // printf("Stashing: %d\n", n->pid);
       release(&n->lock);
-
       
 
   }
