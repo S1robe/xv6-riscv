@@ -1,6 +1,6 @@
 #include "user.h"
 
-#define MAX 50000000000
+#define MAX 10000000000
 
 const int prio[5] = {
    0x0C,
@@ -14,6 +14,8 @@ int n;
 int whoami;
 int pid;
 int key = 0;
+int * buff;
+int bufffd;
 //Read 0, write 1
 int trapC[2], trapP[2];
 unsigned long rand_next = 1;
@@ -104,12 +106,13 @@ void sendChildrenToWork(int random, void work(void))
             int prepri = getpri();
             
             if(key){
-                write(trapP[1], "\1", 1); // only one process will get this, and it will be the last one.
+                write(trapP[1], "\1", 1); // only one process will get this, and it will be the last one, to wake the parent.
             }
 
 
-            read(trapC[0],0, 1);
-            
+            read(trapC[0], 0, 1);
+            write(trapC[1], (char* )0, 1);
+
             close(trapC[0]);
             close(trapC[1]);
             (*work)();             
@@ -120,17 +123,16 @@ void sendChildrenToWork(int random, void work(void))
     }
     if(pid == -1)
         exit(1);
+
     setpri(0xC); // Do this to ensure that main always gets to print first!
     read(trapP[0], 0, 1); // parent will get stuck here and wait to be released.
 
-    printf("Beginning test....\n");
-
-    for(int i = 0; i < n; i++ )
-        write(trapC[1], (char *) 0, 1); // release the children
-
+    write(trapC[1], (char *) 0, 1); // release the children
+    
     int status, corpse;
     while((corpse = wait(&status)) > 0)
         printf("Child %d Done with work (priority 0x%x)\n", corpse, status);
+
     close(trapC[0]);
     close(trapC[1]);
     close(trapP[0]);
@@ -145,6 +147,9 @@ int main(int argc, char * argv[]){
    printf("Welcome to the scheduling tool\nThis will test the current priorities of the system.\n");
    whoami = -1; // parent
    pid = getpid();
+
+    buff = (int*)malloc(sizeof(int)*n);
+   bufffd = dup(*buff);
 
    for(int p = 0; p < (sizeof(prio)/sizeof(prio[0])); p++){
         
