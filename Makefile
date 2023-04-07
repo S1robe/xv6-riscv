@@ -138,7 +138,6 @@ UPROGS=\
 	$U/_pass\
 	$U/_stat\
 	$U/_time\
-	$U/_schedtest\
 	$U/_schtest\
 
 fs.img: mkfs/mkfs README $(UPROGS)
