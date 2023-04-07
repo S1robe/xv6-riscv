@@ -1,0 +1,9 @@
+
+
+
+If two processes are in contention for the core, then the one with the lowest entry in the process table will be picked.
+This is does not imply that it entered first, because of the nature of the process table, if only index 49 is open, a 
+a process is made, fills the entry. Then suddenly 1, 2, 3, open. The processes at 1, 2, 3 will run before 49, even 
+though 49 entered first.
+
+

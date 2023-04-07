@@ -112,8 +112,8 @@ static struct proc*
 allocproc(void)
 {
   struct proc *p;
-
-  for(p = proc; p < &proc[NPROC]; p++) {
+  int i = 0;
+  for(p = proc; p < &proc[NPROC]; p++, i++) {
     acquire(&p->lock);
     if(p->state == UNUSED) {
       goto found;
@@ -150,6 +150,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  #ifdef DEBUG
+  printf("%d created @ %d\n", p->pid, i);
+  #endif
   return p;
 }
 
@@ -166,7 +169,6 @@ freeproc(struct proc *p)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
   p->sz = 0;
-  p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
@@ -174,6 +176,10 @@ freeproc(struct proc *p)
   p->xstate = 0;
   p->prio = 0;
   p->state = UNUSED;
+  #ifdef DEBUG
+  printf("%d destroyed\n",p->pid);
+  #endif
+  p->pid = 0;
 }
 
 // Create a user page table for a given process, with no user memory,

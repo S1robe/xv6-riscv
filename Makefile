@@ -1,5 +1,6 @@
 K=kernel
 U=user
+	
 
 OBJS = \
   $K/entry.o \
@@ -56,8 +57,6 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
-#Removed CFLAGS :  -Werror (Warnings as error)
-
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
@@ -74,6 +73,7 @@ CFLAGS += -fno-pie -nopie
 endif
 
 LDFLAGS = -z max-page-size=4096
+
 
 $K/kernel: $(OBJS) $K/kernel.ld $U/initcode
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -168,6 +168,13 @@ QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
+debug: 
+	@echo "*** Running in debug mode! ***"
+	$(eval CFLAGS += -DDEBUG)
+	@echo $(CFLAGS)
+
+qemu-debug: clean debug qemu
+
 qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
@@ -177,4 +184,5 @@ qemu: $K/kernel fs.img
 qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+
 

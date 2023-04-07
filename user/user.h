@@ -53,3 +53,8 @@ int atoi(const char*);
 int strtoi(const char*, const char**, int);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
+
+
+
+//Added by me
+void debug(int);
