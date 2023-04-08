@@ -13,6 +13,8 @@ struct proc proc[NPROC];
 
 struct proc *initproc;
 
+int realProcs = 0; // tracking process allocation and deallocation, might need to be a semaphor for multicore.
+
 int nextpid = 1;
 struct spinlock pid_lock;
 
@@ -153,6 +155,7 @@ found:
   #ifdef DEBUG
   printf("%d created @ %d\n", p->pid, i);
   #endif
+  realProcs++;
   return p;
 }
 
@@ -179,6 +182,7 @@ freeproc(struct proc *p)
   #ifdef DEBUG
   printf("%d destroyed\n",p->pid);
   #endif
+  realProcs--;
   p->pid = 0;
 }
 
@@ -446,6 +450,43 @@ wait(uint64 addr)
   }
 }
 
+
+// Insertion sort based on PID, n is not predicted to be 64, however,
+// since n is so small this should be acceptable
+//
+// We sort based on PID because the order of PID is based on order of
+// arrival, and therefore consistent and independent of placement
+// in original proc array.
+
+void insertion(struct proc *arr[], int n){
+  int i, j;
+  for (i = 1; i < n; i++) {
+       j = i - 1;
+       acquire(&arr[i]->lock);
+       while (j >= 0){
+           acquire(&arr[j]->lock);
+           if(arr[j]->pid < arr[i]->pid){
+              release(&arr[j]->lock);
+              break;
+           }
+           arr[j + 1] = arr[j];
+           j = j - 1;
+           release(&arr[j]->lock);
+       }
+       arr[j + 1] = arr[i];
+       release(&arr[i]->lock);
+   }
+}
+
+struct proc * nextProc(struct proc *arr[]){
+
+
+}
+
+void removeDeadProcess(int pid){
+
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -457,6 +498,124 @@ void
 scheduler(void)
 {
 
+// #if defined(ROUNDPRI) && !defined(ROUNDROBIN)
+  
+  //Priority queues
+  struct proc* C[NPROC], *A[NPROC], *B[NPROC], *D[NPROC], *F[NPROC];
+  int ce,a, b,d,f; // limits on them
+  int ranPIDS[NPROC]; // previously ran processes, only going to be as large as the highest priority process's limit 
+
+
+  struct proc *n; 
+
+  intr_off();
+  struct cpu *c = mycpu();
+  c->proc = 0;
+
+  for(;;){
+    ce = 0; a = 0; b = 0; d = 0; f = 0;
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        switch(n->prio){
+          case HIGHEST:
+            C[ce] = n;
+            ce++;
+            break;
+          case HIGH:
+            A[a] = n;
+            a++;
+            break;
+          case MIDDLE:
+            B[b] = n;
+            b++;
+            break;
+          case LOW:
+            D[d] = n;
+            d++;
+            break;
+          case LOWEST:
+            F[f] = n;
+            f++;
+            break;
+        }
+      }
+      release(&n->lock);
+    } 
+    //Only need to sort the highest priority.
+    if(ce != 0){
+        insertion(C, ce);
+        n = nextProc(C);
+    }
+    else if(a != 0){
+        insertion(A, a);
+        n = nextProc(A);
+    }
+    else if(b != 0){
+        insertion(B, b);
+        n = nextProc(B);
+    }  
+    else if(d != 0){
+        insertion(D, d);
+        n = nextProc(D);
+    }
+    else if(f != 0){
+        insertion(F, f);
+        n = nextProc(F);
+    }
+  
+    acquire(&n->lock);
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        n->state = RUNNING;
+        c->proc = n;
+        swtch(&c->context, &n->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        
+        c->proc = 0;
+
+    release(&n->lock);
+    
+
+
+
+  }
+#endif
+
+
+#if defined(ROUNDROBIN) && !defined(ROUNDPRI)
+  struct proc *p;
+  struct cpu *c = mycpu();
+
+  c->proc = 0;
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+  }
+#endif
+
+
+#if ! (defined(ROUNDPRI) || defined (ROUNDROBIN))
   struct proc *n;
   intr_off();
   struct cpu *c = mycpu();
@@ -531,81 +690,8 @@ scheduler(void)
       
 
   }
+#endif
 
-
-  // struct proc *p = 0, *n, *n1;
-  // intr_off(); //No interrupting me and the CPU  
-  // struct cpu *c = mycpu();
-  // c->proc = 0; // kick the process out
-  // 
-  // for(;;){
-  //   intr_on(); // no more deadlocks, we are preemptive
-  //   for(n = proc; n < &proc[NPROC]; n++){
-  //     
-  //     acquire(&n->lock);
-  //     if(n->state != RUNNABLE){
-  //       release(&n->lock);
-  //       continue;
-  //     }
-  //     
-  //     p = n;
-  //     for(n1 = proc; n1 < &proc[NPROC]; n1++){
-  //       if(p == n1) continue;
-  //
-  //       acquire(&n1->lock);
-  //       if(n1->state != RUNNABLE){
-  //         release(&n1->lock);
-  //         continue;
-  //       }
-  //
-  //       if(n1->prio < p->prio){
-  //         release(&p->lock);
-  //         p = n1;
-  //         continue;
-  //       }
-  //       release(&n1->lock);
-  //     }
-  //     
-  //
-  //     // printf("Scheduling: %d\n", n->pid);
-  //     c->proc = p;
-  //     p->state = RUNNING;
-  //
-  //     swtch(&c->context, &p->context);
-  //     c->proc = 0;
-  //
-  //     // printf("Stashing: %d\n", n->pid);
-  //     release(&p->lock);
-  //   }
-  //
-  // }
-
-
-  // struct proc *p;
-  // struct cpu *c = mycpu();
-  //
-  // c->proc = 0;
-  // for(;;){
-  //   // Avoid deadlock by ensuring that devices can interrupt.
-  //   intr_on();
-  //
-  //   for(p = proc; p < &proc[NPROC]; p++) {
-  //     acquire(&p->lock);
-  //     if(p->state == RUNNABLE) {
-  //       // Switch to chosen process.  It is the process's job
-  //       // to release its lock and then reacquire it
-  //       // before jumping back to us.
-  //       p->state = RUNNING;
-  //       c->proc = p;
-  //       swtch(&c->context, &p->context);
-  //
-  //       // Process is done running for now.
-  //       // It should have changed its p->state before coming back.
-  //       c->proc = 0;
-  //     }
-  //     release(&p->lock);
-  //   }
-  // }
 }
 
 // Switch to scheduler.  Must hold only p->lock

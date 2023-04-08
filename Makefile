@@ -1,6 +1,6 @@
 K=kernel
 U=user
-	
+
 
 OBJS = \
   $K/entry.o \
@@ -57,7 +57,13 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
+ifndef CFLAGS
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+endif
+ifdef CFLAGS
+CFLAGS += -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+endif
+
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
@@ -168,21 +174,43 @@ QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
+
+qemu-debug: debug qemu
+
+qemu: clean _qemu
+
+qemu-gdb: clean _qemu-gdb
+
 debug: 
 	@echo "*** Running in debug mode! ***"
-	$(eval CFLAGS += -DDEBUG)
-	@echo $(CFLAGS)
+	$(eval CFLAGS+= -DDEBUG)
 
-qemu-debug: clean debug qemu
+robin:
+	@echo "*** Scheduler is Round Robin Based! ***"
+	$(eval CFLAGS+= -DROUNDROBIN)
+	$(eval CFLAGS-= -DROUNDPRI)
 
-qemu: $K/kernel fs.img
+robpri:
+	@echo "*** Scheduler is Priority Round Robin Based! ***"
+	$(eval CFLAGS+= -DROUNDPRI)
+	$(eval CFLAGS-= -DROUNDROBIN)
+
+
+
+
+
+_qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: $K/kernel .gdbinit fs.img
+
+_qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+# catch all and do nothing
+%:
+	@:
 
