@@ -1,9 +1,44 @@
 
 
+Tiebreaks ----------------------
+	If two or more processes are in conention for a core, the current priority based scheduling algorithm
+	picks the processes that arrived first (FCFS). We see this in Picture 1; every time there is a 
+	collection of processes with the same priority, the one with the lowest pid, and therefore came first,
+	always finishes first.
 
-If two processes are in contention for the core, then the one with the lowest entry in the process table will be picked.
-This is does not imply that it entered first, because of the nature of the process table, if only index 49 is open, a 
-a process is made, fills the entry. Then suddenly 1, 2, 3, open. The processes at 1, 2, 3 will run before 49, even 
-though 49 entered first.
+
+Round Robin Priority -----------
+	It is possible to make a priority based round robin scheduler without changing the PCB structure.
+	This can be done by making a copy of the current PCB, including only the runnable processes, and
+	then sorting based on priority. We can get away with this because the order in which each process
+	is copied is the same even if other processes come and go, whats important is the order of what we
+	have already ran. There are 2 cases and 2 subcases for each:
+
+	If a process runs, and then stays in system,
+		and then new processes of same priority enter the system:
+			Under these conditions, if the processes are copied before our current process into the 
+			new scheduling list, then we favor 
+
+	Then we must have an array that tracks who we have ran. This array 
+	is special because it will never contain cross-priority processes. It must be this way because we 
+	are only concerned with the highest priority processes, which is unique to one set of our current 
+	in-system processes. For example a ready queue of: C C C B; only the C's will be included in our 
+	scheduling decisions. 
 
 
+Write-Up -----------------------
+	With the change to an inverted priority based scheduler, we will be able to better control what processes
+	run first by increasing their priority (decreasing the priority value). However, this comes at the cost of
+	possible starvation for lower priority processes, and it also does not guarantee that our desired process
+	runs first compared to others of the same priority. Included is two executions; Execution 1 is running with 
+	three cores, Execution 2 is running with one core. This is to demonstrate that processes are selected in 
+	groups of three and will finish in groups of 3 which have the highest priority.
+
+	We expect the new scheduler to run slower than the previous due to the increased complexity of calculation
+	during each scheduling decision. However, we can expect higher priority (lower value) processes to 
+	complete before their lower priority (higher value) counter parts. Specifically, all C, then all A,
+	then all B, then all D, then all F, in that order, every time. Since xv6 runs on 3 cores naturally, 
+	the completion of any combination of mixed priority will complete roughly at the same time. For example,
+	during execution 1, we see that Process <> finished with priority <>, two others also finished with it, that are
+	of higher priority. This is because they all ran indepenently on separate cores. We can remove this possibility by 
+	restricting to one core as demonstrated by execution 2.
