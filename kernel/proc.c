@@ -478,14 +478,6 @@ void insertion(struct proc *arr[], int n){
    }
 }
 
-struct proc * nextProc(struct proc *arr[]){
-
-
-}
-
-void removeDeadProcess(int pid){
-
-}
 
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -497,123 +489,6 @@ void removeDeadProcess(int pid){
 void
 scheduler(void)
 {
-
-// #if defined(ROUNDPRI) && !defined(ROUNDROBIN)
-  
-  //Priority queues
-  struct proc* C[NPROC], *A[NPROC], *B[NPROC], *D[NPROC], *F[NPROC];
-  int ce,a, b,d,f; // limits on them
-  int ranPIDS[NPROC]; // previously ran processes, only going to be as large as the highest priority process's limit 
-
-
-  struct proc *n; 
-
-  intr_off();
-  struct cpu *c = mycpu();
-  c->proc = 0;
-
-  for(;;){
-    ce = 0; a = 0; b = 0; d = 0; f = 0;
-    for(n = proc; n < &proc[NPROC]; n++){
-      acquire(&n->lock);
-      if(n->state == RUNNABLE){
-        switch(n->prio){
-          case HIGHEST:
-            C[ce] = n;
-            ce++;
-            break;
-          case HIGH:
-            A[a] = n;
-            a++;
-            break;
-          case MIDDLE:
-            B[b] = n;
-            b++;
-            break;
-          case LOW:
-            D[d] = n;
-            d++;
-            break;
-          case LOWEST:
-            F[f] = n;
-            f++;
-            break;
-        }
-      }
-      release(&n->lock);
-    } 
-    //Only need to sort the highest priority.
-    if(ce != 0){
-        insertion(C, ce);
-        n = nextProc(C);
-    }
-    else if(a != 0){
-        insertion(A, a);
-        n = nextProc(A);
-    }
-    else if(b != 0){
-        insertion(B, b);
-        n = nextProc(B);
-    }  
-    else if(d != 0){
-        insertion(D, d);
-        n = nextProc(D);
-    }
-    else if(f != 0){
-        insertion(F, f);
-        n = nextProc(F);
-    }
-  
-    acquire(&n->lock);
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        n->state = RUNNING;
-        c->proc = n;
-        swtch(&c->context, &n->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        
-        c->proc = 0;
-
-    release(&n->lock);
-    
-
-
-
-  }
-#endif
-
-
-#if defined(ROUNDROBIN) && !defined(ROUNDPRI)
-  struct proc *p;
-  struct cpu *c = mycpu();
-
-  c->proc = 0;
-  for(;;){
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
-
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-      release(&p->lock);
-    }
-  }
-#endif
-
 
 #if ! (defined(ROUNDPRI) || defined (ROUNDROBIN))
   struct proc *n;
@@ -691,6 +566,127 @@ scheduler(void)
 
   }
 #endif
+
+#if defined(ROUNDPRI) && !defined(ROUNDROBIN)
+  
+  //Priority queues
+  struct proc* C[NPROC], *A[NPROC], *B[NPROC], *D[NPROC], *F[NPROC];
+  int ce,a, b,d,f, l = 0; // limits on them
+
+  struct proc *n; 
+
+  intr_off();
+  struct cpu *c = mycpu();
+  c->proc = 0;
+
+  for(;;){
+    intr_on();
+    ce = 0; a = 0; b = 0; d = 0; f = 0;
+    for(n = proc; n < &proc[NPROC]; n++){
+      acquire(&n->lock);
+      if(n->state == RUNNABLE){
+        switch(n->prio){
+           case HIGHEST:
+            C[ce] = n;
+            ce++;
+            break;
+          case HIGH:
+            A[a] = n;
+            a++;
+            break;
+          case MIDDLE:
+            B[b] = n;
+            b++;
+            break;
+          case LOW:
+            D[d] = n;
+            d++;
+            break;
+          case LOWEST:
+            F[f] = n;
+            f++;
+            break;
+        }
+      }
+      release(&n->lock);
+    } 
+    //Only need to sort the highest priority.
+    if(ce != 0){
+        insertion(C, ce);
+        if(l >= ce) l = 0;
+        n = C[l]; 
+    }
+    else if(a != 0){
+        insertion(A, a);
+        if(l >= a) l = 0;
+        n = A[l];
+    }
+    else if(b != 0){
+        insertion(B, b);
+        if(l >= b) l = 0;
+        n = B[l];
+    }  
+    else if(d != 0){
+        insertion(D, d);
+        if(l >= d) l = 0;
+        n = D[l];
+    }
+    else if(f != 0){
+        insertion(F, f);
+        if(l >= f) l = 0;
+        n = F[l];
+    }
+
+    acquire(&n->lock);
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+
+        n->state = RUNNING;
+        c->proc = n;
+        swtch(&c->context, &n->context);
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+
+        // if the process terminated then we dont move our pointer.
+        if(n->state == RUNNABLE) 
+          l++;         
+
+    release(&n->lock);
+    
+  }
+#endif
+
+
+#if defined(ROUNDROBIN) && !defined(ROUNDPRI)
+  struct proc *p;
+  struct cpu *c = mycpu();
+
+  c->proc = 0;
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+  }
+#endif
+
 
 }
 

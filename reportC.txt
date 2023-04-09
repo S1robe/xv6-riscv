@@ -10,20 +10,19 @@ Tiebreaks ----------------------
 Round Robin Priority -----------
 	It is possible to make a priority based round robin scheduler without changing the PCB structure.
 	This can be done by making a copy of the current PCB, including only the runnable processes, and
-	then sorting based on priority. We can get away with this because the order in which each process
-	is copied is the same even if other processes come and go, whats important is the order of what we
-	have already ran. There are 2 cases and 2 subcases for each:
+	then sorting based on pid. We choose to sort by PID because it is directly related to when the process
+	entered the system, and therefore does not change between scans for new processes. It also is reliable
+	in that the PID does not change relative to a processes placement in the process table.
+	
+	We must also have an array that tracks who we have ran already. This array will contain the PID's as well.
+	This array will never have processes of difference priority because we only schedule one process
+	after which we must scan again to preserve priority and fairness. This array is only updated if we 
+	have a new process that we havent run before. After that point it is simply checked. Should a process 
+	terminate it will be removed from this array immidiately after losing the core. 
 
-	If a process runs, and then stays in system,
-		and then new processes of same priority enter the system:
-			Under these conditions, if the processes are copied before our current process into the 
-			new scheduling list, then we favor 
+	With these should a new process enter the system, it will be scanned for, put into its respective priority array.
+	After 
 
-	Then we must have an array that tracks who we have ran. This array 
-	is special because it will never contain cross-priority processes. It must be this way because we 
-	are only concerned with the highest priority processes, which is unique to one set of our current 
-	in-system processes. For example a ready queue of: C C C B; only the C's will be included in our 
-	scheduling decisions. 
 
 
 Write-Up -----------------------
