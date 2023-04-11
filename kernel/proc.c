@@ -569,75 +569,79 @@ scheduler(void)
 
 #if defined(ROUNDPRI) && !defined(ROUNDROBIN)
   
-  //Priority queues
-  struct proc* C[NPROC], *A[NPROC], *B[NPROC], *D[NPROC], *F[NPROC];
-  int ce,a, b,d,f, l = 0; // limits on them
-
   struct proc *n; 
 
   intr_off();
   struct cpu *c = mycpu();
+  int ranPIDS[NPROC];
+  int i = 0, size = 0, lastprio = 5;
   c->proc = 0;
 
   for(;;){
     intr_on();
-    ce = 0; a = 0; b = 0; d = 0; f = 0;
     for(n = proc; n < &proc[NPROC]; n++){
       acquire(&n->lock);
       if(n->state == RUNNABLE){
         switch(n->prio){
-           case HIGHEST:
-            C[ce] = n;
-            ce++;
-            break;
-          case HIGH:
-            A[a] = n;
-            a++;
-            break;
-          case MIDDLE:
-            B[b] = n;
-            b++;
-            break;
-          case LOW:
-            D[d] = n;
-            d++;
-            break;
           case LOWEST:
-            F[f] = n;
-            f++;
-            break;
+            if(lastprio < LOWEST) 
+              goto end;
+            // size must be equal to 0 here
+            goto run;
+          case LOW:
+            if(lastprio < LOW) 
+              goto end;
+
+            if(lastprio != LOW) {
+              memset(ranPIDS, 0, sizeof(int)*NPROC);
+              size = 0;
+            }
+            goto run;
+          case MIDDLE:
+            if(lastprio < MIDDLE) 
+              goto end;
+
+            if(lastprio != MIDDLE) {
+              memset(ranPIDS, 0, sizeof(int)*NPROC);
+              size = 0;
+            }
+            goto run;
+
+          case HIGH:
+            if(lastprio < HIGH) 
+              goto end;
+
+            if(lastprio != HIGH) {
+              memset(ranPIDS, 0, sizeof(int)*NPROC);
+              size = 0;
+            }
+            goto run;
+
+          case HIGHEST:
+            if(lastprio != HIGHEST) {
+              memset(ranPIDS, 0, sizeof(int)*NPROC);
+              size = 0;
+            }
+            goto run;
         }
       }
+    end:
       release(&n->lock);
     } 
-    //Only need to sort the highest priority.
-    if(ce != 0){
-        insertion(C, ce);
-        if(l >= ce) l = 0;
-        n = C[l]; 
-    }
-    else if(a != 0){
-        insertion(A, a);
-        if(l >= a) l = 0;
-        n = A[l];
-    }
-    else if(b != 0){
-        insertion(B, b);
-        if(l >= b) l = 0;
-        n = B[l];
-    }  
-    else if(d != 0){
-        insertion(D, d);
-        if(l >= d) l = 0;
-        n = D[l];
-    }
-    else if(f != 0){
-        insertion(F, f);
-        if(l >= f) l = 0;
-        n = F[l];
-    }
+   
+  run:
+      // Find the pid in the list
+        for(i = 0; i < size; i++)
+          if(ranPIDS[i] == n->pid){
+            //Edge case for if ranPIDS is 64 elements, because end must be removed only, not shifted.
+            if(i == NPROC - 1) { ranPIDS[i] = 0; }
+              // otherwise shift everything down ;-; oh the performance hits!
+            else for(; i < size; i++){ ranPIDS[i] = ranPIDS[i+1]; }
+            size--;
+            goto end;
+          }
 
-    acquire(&n->lock);
+
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -649,9 +653,17 @@ scheduler(void)
         // It should have changed its p->state before coming back.
         c->proc = 0;
 
-        // if the process terminated then we dont move our pointer.
-        if(n->state == RUNNABLE) 
-          l++;         
+        // if the process terminated then we dont add it ot the list because its not in the list.
+        // might be an issue if I have a recurring process that leaves and rejoins, again,again,
+        // depends on whos first, it certainly wont beat all processes but some of them.
+        if(n->state == RUNNABLE) {
+            lastprio = n->prio;
+            ranPIDS[size] = n->pid; // add it to the list
+            size++;
+        }
+        if(size == 0)
+          lastprio = 5;
+      
 
     release(&n->lock);
     
