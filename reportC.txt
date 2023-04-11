@@ -4,7 +4,8 @@ Tiebreaks ----------------------
 	If two or more processes are in conention for a core, the current priority based scheduling algorithm
 	picks the processes that arrived first (FCFS). We see this in Picture 1; every time there is a 
 	collection of processes with the same priority, the one with the lowest pid, and therefore came first,
-	always finishes first.
+	always finishes first. This concept is slightly different for multi-core, as groups of 3 will be selected.
+	These three will always be the 3 most recent, but may not finish in order as the cores run independently.
 
 
 Round Robin Priority -----------
@@ -20,9 +21,8 @@ Round Robin Priority -----------
 	have a new process that we havent run before. After that point it is simply checked. Should a process 
 	terminate it will be removed from this array immidiately after losing the core. 
 
-	With these should a new process enter the system, it will be scanned for, put into its respective priority array.
-	After 
-
+	With these, should a new process enter the system, it will be scanned for, put into its respective priority array.
+	Sorted together with the others by PID, which preserves order and then selected in that same order.
 
 
 Write-Up -----------------------
