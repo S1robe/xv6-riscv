@@ -1,8 +1,10 @@
-### This is from my Operating Systems class
- We added the following:
+### This is from a project in an Operating Systems class
+ I added the following:
    - A priority based scheduler
    - various testing scripts present in user/
    - Syscalls for various functions
+   - Modified Makefile to facillitate debugging, and testing schedulers 
+
 
 ## The original disclaimer and acknolwedgements follows
 
