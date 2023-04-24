@@ -4,6 +4,7 @@
    - various testing scripts present in user/
    - Syscalls for various functions
 
+## The original disclaimer and acknolwedgements follows
 
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
